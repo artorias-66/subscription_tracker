@@ -48,7 +48,12 @@ const triggerReminder = async (context, label, subscription) => {
     return await context.run(label, async () => {
         console.log(`Triggering ${label} reminder`);
 
+        console.log('[Controller] Calling sendReminderEmail...');
+
+
+
         await sendReminderEmail({
+
             to: subscription.user.email,
             type: label,
             subscription,
