@@ -26,10 +26,12 @@ export const createSubscription = async (req, res, next) => {
         try {
             console.log('[createSubscription] Sending reminder email now...');
 
+            const populatedSub = await Subscription.findById(subscription._id).populate("user");
+
             await sendReminderEmail({
-                to: req.user.email,        // must be present in your token
-                type: 'reminder_7days',    // 👈 updated to match new template labels
-                subscription,
+                to: req.user.email,
+                type: "reminder_7days",
+                subscription: populatedSub,
             });
 
             console.log('[createSubscription] Reminder email sent successfully.');
