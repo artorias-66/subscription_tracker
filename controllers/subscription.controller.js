@@ -3,7 +3,7 @@ import { workflowClient } from '../config/upstash.js';
 import { SERVER_URL } from '../config/env.js';
 import { sendReminderEmail } from '../utils/send-email.js';
 
-// CREATE subscription (already exists)
+
 export const createSubscription = async (req, res, next) => {
     try {
         const subscription = await Subscription.create({
@@ -23,7 +23,7 @@ export const createSubscription = async (req, res, next) => {
 
         console.log('[createSubscription] Workflow triggered:', workflowRunId);
 
-        // 🔹 Send test reminder email immediately (optional)
+        // 🔹 Send test reminder email immediately 
         try {
             console.log('[createSubscription] Sending reminder email now...');
             const populatedSub = await Subscription.findById(subscription._id).populate("user");
@@ -47,7 +47,7 @@ export const createSubscription = async (req, res, next) => {
     }
 };
 
-// GET subscriptions of a user (already exists)
+// GET subscriptions of a user 
 export const getUserSubscriptions = async (req, res, next) => {
     try {
         if (req.user.id !== req.params.id) {
