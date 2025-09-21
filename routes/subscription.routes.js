@@ -12,22 +12,22 @@ import {
 
 const subscriptionRouter = Router();
 
-// 🔹 Create a new subscription
+// Create a new subscription
 subscriptionRouter.post('/', authorize, createSubscription);
 
-// 🔹 Get all subscriptions of a specific user
+// Get all subscriptions of a specific user
 subscriptionRouter.get('/user/:id', authorize, getUserSubscriptions);
 
-// 🔹 Get subscription details by ID
+//  Get subscription details by ID
 subscriptionRouter.get('/:id', authorize, getSubscriptionById);
 
-// 🔹 Update subscription by ID
+// Update subscription by ID
 subscriptionRouter.put('/:id', authorize, updateSubscription);
 
-// 🔹 Delete subscription by ID
+// Delete subscription by ID
 subscriptionRouter.delete('/:id', authorize, deleteSubscription);
 
-// 🔹 Cancel subscription by ID
+// Cancel subscription by ID
 subscriptionRouter.put('/:id/cancel', authorize, cancelSubscription);
 
 // 🔹 Get upcoming renewals (next 7 days)
