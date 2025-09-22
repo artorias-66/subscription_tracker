@@ -14,14 +14,25 @@ import workflowRouter from './routes/workflow.routes.js';
 const app = express();
 
 // CORS configuration
+const ALLOWED_ORIGINS = [
+    FRONTEND_URL,
+    'http://localhost:5173',
+    'http://localhost:5174',
+];
+
 const corsOptions = {
-    origin: [FRONTEND_URL, "http://localhost:5173"], // your deployed frontend + local dev
+    origin: (origin, callback) => {
+        if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+        return callback(new Error('Not allowed by CORS'));
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true, // if you want cookies or auth headers
+    credentials: true,
 };
 
 app.use(cors(corsOptions));
+// Ensure preflight is handled for all routes
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -39,9 +50,18 @@ app.get('/', (req, res) => {
     res.send('Welcome to the Subscription Tracker API!');
 });
 
-app.listen(PORT, async () => {
-    console.log(`Subscription Tracker API is running on http://localhost:${PORT}`);
-    await connectToDatabase();
-});
+const startServer = async () => {
+    try {
+        await connectToDatabase();
+        app.listen(PORT, () => {
+            console.log(`Subscription Tracker API is running on http://localhost:${PORT}`);
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+};
+
+startServer();
 
 export default app;
