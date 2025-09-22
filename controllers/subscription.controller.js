@@ -3,7 +3,11 @@ import { workflowClient } from '../config/upstash.js';
 import { SERVER_URL } from '../config/env.js';
 import { sendReminderEmail } from '../utils/send-email.js';
 
+<<<<<<< HEAD
 // CREATE subscription
+=======
+
+>>>>>>> d44a4bfd2698a9eaba282709bd2b9a1cbcf298b8
 export const createSubscription = async (req, res, next) => {
     try {
         const subscription = await Subscription.create({
@@ -13,6 +17,7 @@ export const createSubscription = async (req, res, next) => {
 
         console.log('[createSubscription] Subscription created:', subscription.id);
 
+<<<<<<< HEAD
         // Trigger workflow (optional)
         try {
             const { workflowRunId } = await workflowClient.trigger({
@@ -27,6 +32,19 @@ export const createSubscription = async (req, res, next) => {
         }
 
         // Send reminder email immediately (optional)
+=======
+        // 🔹 Trigger workflow
+        const { workflowRunId } = await workflowClient.trigger({
+            url: `${SERVER_URL}/api/v1/workflows/subscription/reminder`,
+            body: { subscriptionId: subscription.id },
+            headers: { 'content-type': 'application/json' },
+            retries: 0,
+        });
+
+        console.log('[createSubscription] Workflow triggered:', workflowRunId);
+
+        // 🔹 Send test reminder email immediately 
+>>>>>>> d44a4bfd2698a9eaba282709bd2b9a1cbcf298b8
         try {
             const populatedSub = await Subscription.findById(subscription._id).populate("user");
             await sendReminderEmail({
@@ -49,7 +67,11 @@ export const createSubscription = async (req, res, next) => {
     }
 };
 
+<<<<<<< HEAD
 // GET subscriptions of a user
+=======
+// GET subscriptions of a user 
+>>>>>>> d44a4bfd2698a9eaba282709bd2b9a1cbcf298b8
 export const getUserSubscriptions = async (req, res, next) => {
     try {
         if (req.user.id !== req.params.id) {
