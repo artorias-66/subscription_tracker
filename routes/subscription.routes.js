@@ -12,25 +12,15 @@ import {
 
 const subscriptionRouter = Router();
 
-// 🔹 Create a new subscription
+// Specific routes first (static paths)
 subscriptionRouter.post('/', authorize, createSubscription);
-
-// 🔹 Get all subscriptions of a specific user
 subscriptionRouter.get('/user/:id', authorize, getUserSubscriptions);
-
-// 🔹 Get subscription details by ID
-subscriptionRouter.get('/:id', authorize, getSubscriptionById);
-
-// 🔹 Update subscription by ID
-subscriptionRouter.put('/:id', authorize, updateSubscription);
-
-// 🔹 Delete subscription by ID
-subscriptionRouter.delete('/:id', authorize, deleteSubscription);
-
-// 🔹 Cancel subscription by ID
-subscriptionRouter.put('/:id/cancel', authorize, cancelSubscription);
-
-// 🔹 Get upcoming renewals (next 7 days)
 subscriptionRouter.get('/upcoming-renewals', authorize, getUpcomingRenewals);
+
+// Param routes after; constrain :id to a 24-char hex ObjectId
+subscriptionRouter.get('/:id([0-9a-fA-F]{24})', authorize, getSubscriptionById);
+subscriptionRouter.put('/:id([0-9a-fA-F]{24})', authorize, updateSubscription);
+subscriptionRouter.delete('/:id([0-9a-fA-F]{24})', authorize, deleteSubscription);
+subscriptionRouter.put('/:id([0-9a-fA-F]{24})/cancel', authorize, cancelSubscription);
 
 export default subscriptionRouter;

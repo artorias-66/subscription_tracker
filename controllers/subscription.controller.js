@@ -3,7 +3,7 @@ import { workflowClient } from '../config/upstash.js';
 import { SERVER_URL } from '../config/env.js';
 import { sendReminderEmail } from '../utils/send-email.js';
 
-// CREATE subscription (already exists)
+// CREATE subscription
 export const createSubscription = async (req, res, next) => {
     try {
         const subscription = await Subscription.create({
@@ -13,19 +13,21 @@ export const createSubscription = async (req, res, next) => {
 
         console.log('[createSubscription] Subscription created:', subscription.id);
 
-        // 🔹 Trigger workflow
-        const { workflowRunId } = await workflowClient.trigger({
-            url: `${SERVER_URL}/api/v1/workflows/subscription/reminder`,
-            body: { subscriptionId: subscription.id },
-            headers: { 'content-type': 'application/json' },
-            retries: 0,
-        });
-
-        console.log('[createSubscription] Workflow triggered:', workflowRunId);
-
-        // 🔹 Send test reminder email immediately (optional)
+        // Trigger workflow (optional)
         try {
-            console.log('[createSubscription] Sending reminder email now...');
+            const { workflowRunId } = await workflowClient.trigger({
+                url: `${SERVER_URL}/api/v1/workflows/subscription/reminder`,
+                body: { subscriptionId: subscription.id },
+                headers: { 'content-type': 'application/json' },
+                retries: 0,
+            });
+            console.log('[createSubscription] Workflow triggered:', workflowRunId);
+        } catch (workflowErr) {
+            console.error('[createSubscription] Workflow trigger failed:', workflowErr);
+        }
+
+        // Send reminder email immediately (optional)
+        try {
             const populatedSub = await Subscription.findById(subscription._id).populate("user");
             await sendReminderEmail({
                 to: req.user.email,
@@ -39,7 +41,7 @@ export const createSubscription = async (req, res, next) => {
 
         res.status(201).json({
             success: true,
-            data: { subscription, workflowRunId },
+            data: subscription,
         });
     } catch (e) {
         console.error('[createSubscription] Error:', e);
@@ -47,13 +49,11 @@ export const createSubscription = async (req, res, next) => {
     }
 };
 
-// GET subscriptions of a user (already exists)
+// GET subscriptions of a user
 export const getUserSubscriptions = async (req, res, next) => {
     try {
         if (req.user.id !== req.params.id) {
-            const error = new Error('You are not the owner of this account');
-            error.status = 401;
-            throw error;
+            return res.status(401).json({ success: false, error: 'Not authorized' });
         }
 
         const subscriptions = await Subscription.find({ user: req.params.id });
@@ -68,11 +68,8 @@ export const getUserSubscriptions = async (req, res, next) => {
 export const getSubscriptionById = async (req, res, next) => {
     try {
         const sub = await Subscription.findById(req.params.id).populate("user");
-        if (!sub) {
-            const error = new Error('Subscription not found');
-            error.status = 404;
-            throw error;
-        }
+        if (!sub) return res.status(404).json({ success: false, error: 'Subscription not found' });
+
         res.status(200).json({ success: true, data: sub });
     } catch (e) {
         console.error('[getSubscriptionById] Error:', e);
@@ -84,16 +81,10 @@ export const getSubscriptionById = async (req, res, next) => {
 export const updateSubscription = async (req, res, next) => {
     try {
         const sub = await Subscription.findById(req.params.id);
-        if (!sub) {
-            const error = new Error('Subscription not found');
-            error.status = 404;
-            throw error;
-        }
+        if (!sub) return res.status(404).json({ success: false, error: 'Subscription not found' });
 
         if (sub.user.toString() !== req.user._id.toString()) {
-            const error = new Error('You are not authorized to update this subscription');
-            error.status = 401;
-            throw error;
+            return res.status(401).json({ success: false, error: 'Not authorized' });
         }
 
         Object.assign(sub, req.body);
@@ -110,20 +101,14 @@ export const updateSubscription = async (req, res, next) => {
 export const deleteSubscription = async (req, res, next) => {
     try {
         const sub = await Subscription.findById(req.params.id);
-        if (!sub) {
-            const error = new Error('Subscription not found');
-            error.status = 404;
-            throw error;
-        }
+        if (!sub) return res.status(404).json({ success: false, error: 'Subscription not found' });
 
         if (sub.user.toString() !== req.user._id.toString()) {
-            const error = new Error('You are not authorized to delete this subscription');
-            error.status = 401;
-            throw error;
+            return res.status(401).json({ success: false, error: 'Not authorized' });
         }
 
-        await sub.remove();
-        res.status(200).json({ success: true, message: 'Subscription deleted successfully' });
+        await sub.deleteOne(); // <-- replace sub.remove()
+        return res.status(200).json({ success: true, message: 'Subscription deleted successfully' });
     } catch (e) {
         console.error('[deleteSubscription] Error:', e);
         next(e);
@@ -134,19 +119,18 @@ export const deleteSubscription = async (req, res, next) => {
 export const cancelSubscription = async (req, res, next) => {
     try {
         const sub = await Subscription.findById(req.params.id);
-        if (!sub) {
-            const error = new Error('Subscription not found');
-            error.status = 404;
-            throw error;
-        }
+        if (!sub) return res.status(404).json({ success: false, error: 'Subscription not found' });
 
         if (sub.user.toString() !== req.user._id.toString()) {
-            const error = new Error('You are not authorized to cancel this subscription');
-            error.status = 401;
-            throw error;
+            return res.status(401).json({ success: false, error: 'Not authorized' });
         }
 
-        sub.status = 'canceled';
+        // Match your model’s enum exactly:
+        if (sub.status === 'cancelled') {
+            return res.status(400).json({ success: false, error: 'Subscription is already canceled' });
+        }
+
+        sub.status = 'cancelled'; // <- use the enum value from your schema
         sub.endDate = new Date();
         await sub.save();
 
@@ -165,11 +149,11 @@ export const getUpcomingRenewals = async (req, res, next) => {
         nextWeek.setDate(today.getDate() + 7);
 
         const subs = await Subscription.find({
-            endDate: { $gte: today, $lte: nextWeek },
+            nextRenewalDate: { $gte: today, $lte: nextWeek },
             status: 'active'
         }).populate("user");
 
-        res.status(200).json({ success: true, data: subs });
+        res.status(200).json({ success: true, data: subs }); // always 200
     } catch (e) {
         console.error('[getUpcomingRenewals] Error:', e);
         next(e);
