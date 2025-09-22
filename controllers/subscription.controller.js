@@ -103,4 +103,55 @@ export const deleteSubscription = async (req, res, next) => {
         const sub = await Subscription.findById(req.params.id);
         if (!sub) return res.status(404).json({ success: false, error: 'Subscription not found' });
 
-        if (sub.user.toString() !== req.user._id.toStri_
+        if (sub.user.toString() !== req.user._id.toString()) {
+            return res.status(401).json({ success: false, error: 'Not authorized' });
+        }
+
+        await sub.deleteOne();
+
+        res.status(200).json({ success: true, message: 'Subscription deleted successfully' });
+    } catch (e) {
+        console.error('[deleteSubscription] Error:', e);
+        next(e);
+    }
+};
+
+// CANCEL subscription
+export const cancelSubscription = async (req, res, next) => {
+    try {
+        const sub = await Subscription.findById(req.params.id);
+        if (!sub) return res.status(404).json({ success: false, error: 'Subscription not found' });
+
+        if (sub.user.toString() !== req.user._id.toString()) {
+            return res.status(401).json({ success: false, error: 'Not authorized' });
+        }
+
+        sub.status = 'cancelled';
+        await sub.save();
+
+        res.status(200).json({ success: true, data: sub });
+    } catch (e) {
+        console.error('[cancelSubscription] Error:', e);
+        next(e);
+    }
+};
+
+// GET upcoming renewals (next 7 days)
+export const getUpcomingRenewals = async (req, res, next) => {
+    try {
+        const now = new Date();
+        const sevenDaysFromNow = new Date();
+        sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
+        const subscriptions = await Subscription.find({
+            user: req.user._id,
+            status: 'active',
+            renewalDate: { $gte: now, $lte: sevenDaysFromNow },
+        }).sort({ renewalDate: 1 });
+
+        res.status(200).json({ success: true, data: subscriptions });
+    } catch (e) {
+        console.error('[getUpcomingRenewals] Error:', e);
+        next(e);
+    }
+};
