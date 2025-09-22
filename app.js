@@ -15,6 +15,7 @@ const app = express();
 
 // CORS configuration
 const ALLOWED_ORIGINS = [
+    'https://subscription-tracker-frontend-rho.vercel.app',
     FRONTEND_URL,
     'http://localhost:5173',
     'http://localhost:5174',
